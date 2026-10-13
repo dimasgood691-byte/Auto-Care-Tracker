@@ -1,8 +1,43 @@
+using Microsoft.EntityFrameworkCore;
+using AutoCareTracker.API.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+
+//kode ini untuk menghubungkan ke database sql server
+builder.Services.AddDbContext<AppDBContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFlutterAndNextjs", policy =>
+    {
+        policy.SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin))
+                {
+                    return true;
+                }
+
+                return origin.StartsWith("http://localhost", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("http://127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("http://10.0.2.2", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("http://192.168.", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("https://127.0.0.1", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("https://10.0.2.2", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("https://192.168.", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("http://[::1]", StringComparison.OrdinalIgnoreCase)
+                    || origin.StartsWith("https://[::1]", StringComparison.OrdinalIgnoreCase);
+            })
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 
 var app = builder.Build();
 
@@ -12,7 +47,14 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors("AllowFlutterAndNextjs");
+app.UseAuthorization();
+app.MapControllers();
 
 var summaries = new[]
 {
@@ -21,7 +63,7 @@ var summaries = new[]
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var forecast = Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
