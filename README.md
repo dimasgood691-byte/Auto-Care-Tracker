@@ -18,21 +18,97 @@ Aplikasi *Auto Care Tracker* dengan arsitektur yang menyatukan manajemen penggun
    - **Flutter** : 3.47.7 [MobileApp]
 
 ## [PROGRES PENGERJAAN]
-   ### connect in dan configurasi .NET agar terhubung ke DB SQL Server [DBName->AutoCareTrackerDB] dan configurasi agar bisa terhubung dengan NEXT.JS.
-   **Configurasi .NET**
-   [1] [appsettings.json] : konfigurasi connection string anda ke sql server di sini.
-  ```
+### 1. Backend Configuration (.NET)
+
+Konfigurasi backend dilakukan untuk menghubungkan aplikasi .NET dengan database SQL Server serta menyediakan REST API yang dapat diakses oleh frontend Next.js dan aplikasi mobile.
+
+#### 1.1. Database Connection
+
+**File:** `appsettings.json`
+
+Konfigurasi connection string untuk menghubungkan aplikasi backend ke database `AutoCareTrackerDB`.
+
+```json
+{
   "AllowedHosts": "*",
   "ConnectionStrings": {
     "DefaultConnection": "Server=localhost;Database=AutoCareTrackerDB;Trusted_Connection=True;TrustServerCertificate=True;"
-  }```
-  ```
-   [2] [Program.cs] : file utama untuk mendaftarkan layanan, konfigurasi DbContext SQL Server, middleware CORS agar bisa diakses oleh Next.js, dan pemetaan controller.
-   [3] Model [User] : satu tabel terpusat (Users) yang efisien untuk menampung dua peran (Role): Admin dan Customer, telah disesuaikan menjadi nullable (fleksibel) agar akun     Admin (yang cukup membutuhkan Email dan Password) maupun Customer (yang membutuhkan data lengkap seperti Fullname dan PhoneNumber) dapat tersimpan dengan baik di SQL Server.
-   [4] Controller [UsersController] : Menangani logika endpoint REST API untuk melakukan GET (mengambil daftar user) dan POST (mendaftarkan user baru dari web/mobile).
-   [5] Data [AppDBContext] : jembatan penghubung antara entitas C# (User) dengan database SQL Server via Entity Framework Core.
-   **Configurasi NEXT.JS**
-   membuat file _.env.local_ disini dengan : [NEXT_PUBLIC_API_URL=http://localhost:5083/api]
+  }
+}
+```
+
+**Configuration notes:**
+- `Server`: Alamat instance SQL Server yang digunakan.
+- `Database`: Nama database yang digunakan, yaitu `AutoCareTrackerDB`.
+- `Trusted_Connection=True`: Menggunakan Windows Authentication.
+- `TrustServerCertificate=True`: Mempercayai sertifikat server tanpa validasi rantai sertifikat. Pengaturan ini umumnya digunakan untuk development lokal, bukan sebagai konfigurasi default production.
+
+> **Security note:** Untuk production, simpan connection string melalui environment variables atau secret management. Hindari menyimpan kredensial sensitif di repository.
+
+#### 1.2. Application Entry Point and Middleware
+
+**File:** `Program.cs`
+
+Berfungsi sebagai entry point aplikasi untuk mengatur dependency injection, database connection, middleware, dan HTTP request pipeline.
+
+Konfigurasi utama meliputi:
+- Registrasi `AppDBContext` menggunakan Entity Framework Core dengan provider SQL Server.
+- Konfigurasi CORS (*Cross-Origin Resource Sharing*) agar frontend Next.js dapat mengakses backend.
+- Registrasi controller untuk menangani HTTP requests.
+- Pemetaan endpoint melalui `MapControllers()`.
+
+#### 1.3. User Entity Model
+
+**File:** `Models/User.cs`
+
+Model `User` merepresentasikan entitas pengguna yang disimpan dalam tabel `Users` pada database SQL Server.
+
+Sistem menggunakan satu entitas pengguna dengan atribut `Role` untuk membedakan jenis akun:
+- **Admin:** Akun administrator dengan hak akses pengelolaan sistem.
+- **Customer:** Akun pelanggan yang menyimpan informasi profil, seperti nama lengkap dan nomor telepon.
+
+Beberapa properti dapat menggunakan nullable types untuk mengakomodasi kebutuhan data yang berbeda. Namun, validasi tetap harus diterapkan sesuai peran dan kebutuhan bisnis agar data yang wajib diisi tidak tersimpan dalam kondisi kosong.
+
+#### 1.4. Users REST API Controller
+
+**File:** `Controllers/UsersController.cs`
+
+Controller ini menangani HTTP requests yang berkaitan dengan data pengguna melalui REST API.
+
+Endpoint yang dikembangkan:
+- `GET`: Mengambil data pengguna.
+- `POST`: Membuat atau mendaftarkan pengguna baru dari frontend web maupun aplikasi mobile.
+
+Setiap endpoint perlu menerapkan validasi input, penanganan error, dan mekanisme autentikasi serta otorisasi sesuai kebutuhan aksesnya.
+
+#### 1.5. Database Context
+
+**File:** `Data/AppDBContext.cs`
+
+`AppDBContext` merupakan penghubung antara model aplikasi berbasis C# dan database SQL Server melalui Entity Framework Core.
+
+Tanggung jawab utamanya:
+- Mengelola koneksi dan interaksi dengan database.
+- Memetakan entitas `User` ke tabel `Users`.
+- Menyediakan akses data melalui `DbSet<User>`.
+- Mendukung operasi database dan migrasi skema melalui Entity Framework Core.
+
+---
+
+### 2. Frontend Configuration (Next.js)
+
+Frontend Next.js menggunakan environment variable untuk menentukan base URL backend REST API.
+
+#### 2.1. Environment Variables
+
+**File:** `.env.local`
+
+Tambahkan konfigurasi berikut pada root directory project Next.js:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5083/api
+```
+
 
    ### set up project Flutter
 
