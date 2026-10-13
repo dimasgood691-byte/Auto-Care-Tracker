@@ -12,6 +12,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddDbContext<AppDBContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+//konfigurasi CORS untuk mengizinkan permintaan dari Flutter dan Next.js
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutterAndNextjs", policy =>

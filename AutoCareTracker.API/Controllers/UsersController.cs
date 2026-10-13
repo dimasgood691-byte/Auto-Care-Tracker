@@ -16,15 +16,23 @@ namespace AutoCareTracker.API.Controllers
             _context = context;
         }
 
-        [HttpGet]
+        [HttpGet] //GET: api/users
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
             return await _context.Users.ToListAsync();
         }
 
-        [HttpPost]
+        [HttpPost] //POST: api/users
         public async Task<ActionResult<User>> PostUser(User user)
         {
+            // Validasi role default jika kosong
+            if (string.IsNullOrEmpty(user.Role))
+            {
+                user.Role = "Customer";
+            }
+
+            user.CreatedAt = DateTime.Now;
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
