@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AutoCareTracker.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+477f9a59bcbb589886e526ef4ba39db08a557333")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c765d9d29d2e07ae737c36ea6afbdcfafad55c36")]
 [assembly: System.Reflection.AssemblyProductAttribute("AutoCareTracker.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AutoCareTracker.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
