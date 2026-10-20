@@ -150,6 +150,35 @@ Tambahkan konfigurasi berikut pada root directory project Next.js:
 NEXT_PUBLIC_API_URL=http://localhost:5083/api
 ```
 
+### 3. Membuat Page Login Admin (Next.js)
+
+Dalam pengerjaan halaman login di `page.tsx`, tidak ada library eksternal tambahan yang di-install di luar bawaan proyek. Seluruh fitur dan efek visual dibangun menggunakan tech stack yang sudah terdaftar di `package.json`:
+
+1. **Library Utama (Bawaan Project)**
+   - **React (react v19.3.0)**
+     - Digunakan untuk hooks bawaan yaitu `useState` dan `useEffect` (mengelola input email/password, deteksi Caps Lock, fitur Ingat Email, serta melacak posisi koordinat kursor x, y untuk efek spotlight).
+   - **Next.js (next v16.4.0 — modul next/navigation & next/font/google)**
+     - Menggunakan `useRouter` dari `next/navigation` untuk mengarahkan pengguna (redirect) setelah login berhasil.
+     - Menggunakan font Geist dan Geist_Mono dari `next/font/google` di `layout.tsx`.
+   - **Tailwind CSS v4 (tailwindcss & @tailwindcss/turbopack)**
+     - Digunakan untuk seluruh desain responsif (split-screen), efek glassmorphism (backdrop-blur), gradasi warna, shadow, dan transisi interaktif.
+
+2. **Teknik Native (Tanpa Library Tambahan)**
+   - **CSS Keyframes Murni (globals.css):** Animasi getar saat error (`animate-shake`), lencana melayang (`animate-float`), dan bola cahaya bergerak (`animate-blob`) ditulis menggunakan `@keyframes` CSS murni tanpa library animasi seperti Framer Motion.
+   - **Inline SVG:** Seluruh ikon (logo, email, gembok, mata show/hide password, peringatan) menggunakan kode `<svg>` langsung di JSX, sehingga tidak perlu menginstal library ikon seperti lucide-react atau react-icons.
+   - **Browser Web API (fetch & localStorage):** Menggunakan `fetch()` bawaan browser untuk memanggil endpoint REST API .NET (`/api/users/login`) dan `localStorage` untuk menyimpan sesi admin serta preferensi ingat email.
+
+### 4. Configuration Token JWT untuk Login
+
+Selain membuat halaman login, konfigurasi keamanan di sisi *backend* (.NET 10) juga telah ditingkatkan menggunakan JSON Web Token (JWT). Konfigurasi yang dilakukan meliputi:
+
+1. **Instalasi Package Keamanan:** Menambahkan paket resmi `Microsoft.AspNetCore.Authentication.JwtBearer` ke proyek .NET.
+2. **Konfigurasi Kunci Rahasia:** Menambahkan pengaturan `"Jwt"` di dalam file `appsettings.json`, yang berisi `Key` (Kunci rahasia panjang), `Issuer`, dan `Audience`.
+3. **Registrasi Middleware (Program.cs):**
+   - Mendaftarkan layanan Autentikasi (`AddAuthentication`) dengan pengaturan validasi JWT.
+   - Menambahkan `app.UseAuthentication()` dan `app.UseAuthorization()` ke dalam pipeline request untuk memvalidasi token setiap kali ada request masuk.
+4. **Generasi Token (UsersController.cs):** Memisahkan endpoint *Register* dengan endpoint khusus *Login* (`[HttpPost("login")]`). Saat kredensial valid, backend men-generate *Token JWT* (berisi *payload* aman seperti UserID dan Role) yang akan kedaluwarsa secara otomatis. Token ini dikirimkan kembali ke klien untuk digunakan sebagai otorisasi pada aktivitas selanjutnya.
+
 ## Langkah Instalasi
 #### [1] Clone Repository
 
