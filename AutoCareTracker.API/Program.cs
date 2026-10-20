@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using AutoCareTracker.API.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +44,24 @@ builder.Services.AddCors(options =>
     });
 });
 
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Configuration value 'Jwt:Key' is required.");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+        };
+    });
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -56,6 +77,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFlutterAndNextjs");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
