@@ -50,9 +50,6 @@ Konfigurasi *connection string* untuk menghubungkan aplikasi backend ke database
 - `Database`: Nama database yang digunakan, yaitu `AutoCareTrackerDB`.
 - `Trusted_Connection=True`: Menggunakan Windows Authentication.
 - `TrustServerCertificate=True`: Mempercayai sertifikat server tanpa validasi rantai sertifikat untuk kebutuhan *development* lokal.
-
-> **Security note:** Untuk *production*, simpan *connection string* melalui *environment variables* atau *secret management*. Hindari menyimpan kredensial sensitif di repositori publik.
-
 ---
 
 #### 1.2. Application Entry Point and Middleware
