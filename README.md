@@ -9,7 +9,7 @@ Sistem informasi manajemen bengkel kendaraan terintegrasi: web admin, aplikasi m
 | **Andra** | Backend Web Developer                        | [GitHub](https://github.com/ridwanaulandra)    |
 | **Azzam** | Full Stack Mobile Developer                  | [GitHub](https://github.com/Azzamwahyudin1)    |
 | **Bima**  | Frontend Web Developer                       | [GitHub](https://github.com)
-| **Catur** | Data Analis                                  | [GitHub](https://github.com)
+| **Catur** | Data Analyst                                 | [GitHub](https://github.com)
 | **Asyraf**| UI & UX Desainer                             | [GitHub](https://github.com)
 
 ## [VERSI TECH STACK YANG DIGUNAKAN]
