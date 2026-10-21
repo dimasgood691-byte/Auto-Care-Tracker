@@ -5,9 +5,9 @@ Sistem informasi manajemen bengkel kendaraan terintegrasi: web admin, aplikasi m
 ## Tim Developer
 |    Nama   |                    Peran                     |                     GitHub                     |
 |-----------|----------------------------------------------|------------------------------------------------|
-| **Dimas** | Project Lead & Full Stack Developer          | [GitHub](https://github.com/dimasgood691-byte) |
+| **Dimas** | Project Lead & Full Stack Web Developer      | [GitHub](https://github.com/dimasgood691-byte) |
 | **Andra** | Backend Web Developer                        | [GitHub](https://github.com/ridwanaulandra)    |
-| **Azzam** | Mobile Developer                             | [GitHub](https://github.com/Azzamwahyudin1)    |
+| **Azzam** | Full Stack Mobile Developer                  | [GitHub](https://github.com/Azzamwahyudin1)    |
 | **Bima**  | Frontend Web Developer                       | [GitHub](https://github.com)
 | **Catur** | Data Analis                                  | [GitHub](https://github.com)
 | **Asyraf**| UI & UX Desainer                             | [GitHub](https://github.com)
