@@ -2,11 +2,13 @@ using AutoCareTracker.API.Data;
 using AutoCareTracker.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AutoCareTracker.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "KasirAccess")] // Hanya SuperAdmin dan Kasir yang bisa mengakses Invoice
     public class InvoicesController : ControllerBase
     {
         private readonly AppDBContext _context;

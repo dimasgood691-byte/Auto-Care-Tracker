@@ -1,5 +1,6 @@
 using AutoCareTracker.API.Data;
 using AutoCareTracker.API.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace AutoCareTracker.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // Semua request wajib membawa token JWT yang valid (Staf maupun Customer Flutter)
     public class VehiclesController : ControllerBase
     {
         private readonly AppDBContext _context;
@@ -18,6 +20,7 @@ namespace AutoCareTracker.API.Controllers
 
         // GET: api/vehicles
         [HttpGet]
+        [Authorize(Policy = "StaffOnly")] // Hanya staf bengkel yang boleh melihat seluruh data kendaraan
         public async Task<ActionResult<IEnumerable<Vehicle>>> GetVehicles()
         {
             return await _context.Vehicles
@@ -36,6 +39,7 @@ namespace AutoCareTracker.API.Controllers
 
         // POST: api/vehicles
         [HttpPost]
+        [Authorize(Policy = "KasirAccess")] // Hanya Kasir & SuperAdmin yang mendaftarkan kendaraan di bengkel
         public async Task<ActionResult<Vehicle>> PostVehicle(Vehicle vehicle)
         {
             vehicle.CreatedAt = DateTime.Now;

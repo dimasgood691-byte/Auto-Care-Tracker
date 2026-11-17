@@ -2,11 +2,13 @@ using AutoCareTracker.API.Data;
 using AutoCareTracker.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AutoCareTracker.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // Wajib terautentikasi (baik Staf Web maupun Customer Flutter)
     public class WorkOrdersController : ControllerBase
     {
         private readonly AppDBContext _context;
@@ -18,6 +20,7 @@ namespace AutoCareTracker.API.Controllers
 
         // GET: api/workorders (Lengkap dengan detail mobil, pemilik, jasa, sparepart, foto, dan invoice)
         [HttpGet]
+        [Authorize(Policy = "StaffOnly")] // Hanya staf (SuperAdmin, Kasir, Mekanik) yang bisa melihat seluruh daftar WorkOrders
         public async Task<ActionResult<IEnumerable<WorkOrder>>> GetWorkOrders()
         {
             return await _context.WorkOrders
@@ -33,7 +36,7 @@ namespace AutoCareTracker.API.Controllers
         }
 
         // GET: api/workorders/5
-        [HttpGet("{id}")]
+        [HttpGet("{id}")] // Mengizinkan Staf maupun Customer (Flutter) melihat detail WorkOrder tertentu
         public async Task<ActionResult<WorkOrder>> GetWorkOrder(int id)
         {
             var workOrder = await _context.WorkOrders
@@ -53,6 +56,7 @@ namespace AutoCareTracker.API.Controllers
 
         // POST: api/workorders (Membuat Work Order Baru)
         [HttpPost]
+        [Authorize(Policy = "KasirAccess")] // Hanya Kasir & SuperAdmin yang membuat antrean baru
         public async Task<ActionResult<WorkOrder>> PostWorkOrder(WorkOrder workOrder)
         {
             // Generate nomor WO otomatis jika kosong
@@ -80,6 +84,7 @@ namespace AutoCareTracker.API.Controllers
 
         // PUT: api/workorders/5/status (Update Status & Nama Mekanik)
         [HttpPut("{id}/status")]
+        [Authorize(Policy = "MekanikAccess")] // Hanya Mekanik & SuperAdmin yang mengupdate pengerjaan
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] WorkOrder updateData)
         {
             var wo = await _context.WorkOrders.FindAsync(id);
@@ -100,6 +105,7 @@ namespace AutoCareTracker.API.Controllers
 
         // POST: api/workorders/5/services (Tambah Biaya Jasa ke WO)
         [HttpPost("{id}/services")]
+        [Authorize(Policy = "MekanikAccess")] // Hanya Mekanik & SuperAdmin yang menginput biaya jasa servis
         public async Task<ActionResult<WorkOrderService>> AddService(int id, WorkOrderService service)
         {
             service.WorkOrderId = id;
@@ -113,6 +119,7 @@ namespace AutoCareTracker.API.Controllers
 
         // POST: api/workorders/5/items (Tambah Sparepart ke WO & Potong Stok Otomatis)
         [HttpPost("{id}/items")]
+        [Authorize(Policy = "MekanikAccess")] // Hanya Mekanik & SuperAdmin yang menambahkan sparepart ke pengerjaan
         public async Task<ActionResult<WorkOrderItem>> AddSparepartItem(int id, WorkOrderItem item)
         {
             var sparepart = await _context.Spareparts.FindAsync(item.SparepartId);
@@ -135,6 +142,7 @@ namespace AutoCareTracker.API.Controllers
 
         // POST: api/workorders/5/photos (Tambah Foto Progres Pengerjaan)
         [HttpPost("{id}/photos")]
+        [Authorize(Policy = "MekanikAccess")] // Hanya Mekanik & SuperAdmin yang mengunggah foto progres
         public async Task<ActionResult<ProgressPhoto>> AddPhoto(int id, ProgressPhoto photo)
         {
             photo.WorkOrderId = id;

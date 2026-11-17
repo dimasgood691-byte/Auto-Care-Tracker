@@ -2,11 +2,13 @@ using AutoCareTracker.API.Data;
 using AutoCareTracker.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AutoCareTracker.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "StaffOnly")] // Semua staf bisa melihat daftar & stok sparepart (GET)
     public class SparepartsController : ControllerBase
     {
         private readonly AppDBContext _context;
@@ -25,6 +27,7 @@ namespace AutoCareTracker.API.Controllers
 
         // POST: api/spareparts
         [HttpPost]
+        [Authorize(Policy = "MekanikAccess")] // Hanya Mekanik & SuperAdmin yang bisa menambah master sparepart baru
         public async Task<ActionResult<Sparepart>> PostSparepart(Sparepart sparepart)
         {
             sparepart.CreatedAt = DateTime.Now;
@@ -38,6 +41,7 @@ namespace AutoCareTracker.API.Controllers
 
         // PUT: api/spareparts/5
         [HttpPut("{id}")]
+        [Authorize(Policy = "MekanikAccess")] // Hanya Mekanik & SuperAdmin yang bisa mengupdate stok/harga sparepart
         public async Task<IActionResult> PutSparepart(int id, Sparepart sparepart)
         {
             if (id != sparepart.Id) return BadRequest();

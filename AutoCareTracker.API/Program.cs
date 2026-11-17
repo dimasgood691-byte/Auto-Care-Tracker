@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using AutoCareTracker.API.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,7 +11,31 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Auto Care Tracker API",
+        Version = "v1",
+        Description = "REST API Sistem Manajemen Bengkel Kendaraan Terintegrasi (TeFA Wisesa)"
+    });
+
+    // Konfigurasi tombol Authorize (JWT Bearer) di Swagger UI
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Masukkan token JWT hasil login di sini (tanpa kata 'Bearer')."
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
 
 //kode ini untuk menghubungkan ke database sql server
 builder.Services.AddDbContext<AppDBContext>(options =>
@@ -62,6 +87,27 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// Konfigurasi Role Hierarchy (Kasir & Mekanik extends dari SuperAdmin)
+builder.Services.AddAuthorization(options =>
+{
+    // Khusus SuperAdmin (misal: kelola data user/pegawai)
+    options.AddPolicy("SuperAdminOnly", policy =>
+        policy.RequireRole("SuperAdmin"));
+
+    // Hak akses Kasir (otomatis dimiliki juga oleh SuperAdmin)
+    options.AddPolicy("KasirAccess", policy =>
+        policy.RequireRole("SuperAdmin", "Kasir"));
+
+    // Hak akses Mekanik (otomatis dimiliki juga oleh SuperAdmin)
+    options.AddPolicy("MekanikAccess", policy =>
+        policy.RequireRole("SuperAdmin", "Mekanik"));
+
+    // Semua staf operasional bengkel di web
+    options.AddPolicy("StaffOnly", policy =>
+        policy.RequireRole("SuperAdmin", "Kasir", "Mekanik"));
+});
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -81,28 +127,4 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

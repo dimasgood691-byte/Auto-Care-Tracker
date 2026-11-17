@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AutoCareTracker.API.Data;
@@ -11,10 +13,14 @@ namespace AutoCareTracker.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Policy = "StaffOnly")] // Staf (SuperAdmin, Kasir, Mekanik) dapat melihat daftar user/pelanggan
     public class UsersController : ControllerBase
     {
         private readonly AppDBContext _context;
         private readonly IConfiguration _config;
+        private readonly PasswordHasher<User> _passwordHasher = new();
+
+        private static readonly string[] ValidRoles = { "Customer", "SuperAdmin", "Kasir", "Mekanik" };
 
         public UsersController(AppDBContext context, IConfiguration config)
         {
@@ -22,22 +28,44 @@ namespace AutoCareTracker.API.Controllers
             _config = config;
         }
 
-        [HttpGet] //GET: api/users
+        [HttpGet] // GET: api/users
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
+            // PasswordHash otomatis disembunyikan berkat [JsonIgnore] di User.cs
             return await _context.Users.ToListAsync();
         }
 
-        [HttpPost()] //POST: api/users
-        public async Task<ActionResult<User>> PostUser(User user)
+        // Hanya SuperAdmin ber-token yang bisa membuat akun staf/user baru
+        [HttpPost] // POST: api/users
+        [Authorize(Policy = "SuperAdminOnly")]
+        public async Task<ActionResult<User>> PostUser([FromBody] CreateUserRequest request)
         {
-            // Validasi role default jika kosong
-            if (string.IsNullOrEmpty(user.Role))
+            var normalizedEmail = request.Email.Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(normalizedEmail) || string.IsNullOrWhiteSpace(request.Password))
             {
-                user.Role = "Customer";
+                return BadRequest(new { message = "Email dan password wajib diisi." });
             }
 
-            user.CreatedAt = DateTime.Now;
+            if (await _context.Users.AnyAsync(u => u.Email.ToLower() == normalizedEmail))
+            {
+                return BadRequest(new { message = "Email sudah terdaftar. Gunakan alamat email lain." });
+            }
+
+            var role = (!string.IsNullOrEmpty(request.Role) && ValidRoles.Contains(request.Role))
+                ? request.Role
+                : "Customer";
+
+            var user = new User
+            {
+                Fullname = request.Fullname.Trim(),
+                Email = request.Email.Trim(),
+                PhoneNumber = request.PhoneNumber?.Trim() ?? string.Empty,
+                Role = role,
+                CreatedAt = DateTime.Now
+            };
+
+            // Hash password sebelum disimpan ke database
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
@@ -45,38 +73,91 @@ namespace AutoCareTracker.API.Controllers
             return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
         }
 
-        [HttpPost("login")] //POST: api/users/login
+        // Endpoint registrasi publik untuk Customer (aplikasi Flutter)
+        [AllowAnonymous]
+        [HttpPost("register")] // POST: api/users/register
+        public async Task<ActionResult<User>> RegisterCustomer([FromBody] CreateUserRequest request)
+        {
+            var normalizedEmail = request.Email.Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(normalizedEmail) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { message = "Email dan password wajib diisi." });
+            }
+
+            if (await _context.Users.AnyAsync(u => u.Email.ToLower() == normalizedEmail))
+            {
+                return BadRequest(new { message = "Email sudah terdaftar. Silakan langsung login." });
+            }
+
+            var user = new User
+            {
+                Fullname = request.Fullname.Trim(),
+                Email = request.Email.Trim(),
+                PhoneNumber = request.PhoneNumber?.Trim() ?? string.Empty,
+                Role = "Customer", // Paksa menjadi Customer
+                CreatedAt = DateTime.Now
+            };
+
+            // Hash password sebelum disimpan ke database
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+        }
+
+        // Endpoint Login untuk Web (Staf) dan Mobile Flutter (Customer)
+        [AllowAnonymous]
+        [HttpPost("login")] // POST: api/users/login
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            // Cari user di database yang email dan passwordnya sama persis
             var user = await _context.Users.FirstOrDefaultAsync(u =>
-                u.Email.ToLower() == request.Email.ToLower() &&
-                u.PasswordHash == request.Password);
+                u.Email.ToLower() == request.Email.ToLower());
 
-            // Jika tidak ada yang cocok
             if (user == null)
             {
                 return Unauthorized(new { message = "Email atau password yang Anda masukkan salah." });
             }
 
-            // Jika cocok, tapi role-nya bukan Admin
-            if (user.Role != "Admin")
+            bool isPasswordValid = false;
+
+            try
             {
-                return StatusCode(403, new { message = "Akses ditolak! Portal web ini khusus untuk Admin bengkel." });
+                // Verifikasi menggunakan PasswordHasher
+                var result = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+                if (result == PasswordVerificationResult.Success ||
+                    result == PasswordVerificationResult.SuccessRehashNeeded)
+                {
+                    isPasswordValid = true;
+                }
+            }
+            catch (FormatException)
+            {
+                // Fallback untuk akun lama di database yang password-nya masih plain-text (belum di-hash)
+                if (user.PasswordHash == request.Password)
+                {
+                    isPasswordValid = true;
+                    // Otomatis upgrade password plain-text di database menjadi hash
+                    user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+                    await _context.SaveChangesAsync();
+                }
             }
 
-            //generate token JWT berhasil login
+            if (!isPasswordValid)
+            {
+                return Unauthorized(new { message = "Email atau password yang Anda masukkan salah." });
+            }
+
             var tokenString = GenerateJwtToken(user);
 
-            //kembalikan token ke frontend (response)
             return Ok(new
             {
                 token = tokenString,
-                user = new { user.Id, user.Fullname, email = user.Email, user.Role } //sembunyikan password dari response
+                user = new { user.Id, user.Fullname, email = user.Email, user.Role }
             });
         }
 
-        //function private untuk membuat token jwt
         private string GenerateJwtToken(User user)
         {
             var jwtKey = _config["Jwt:Key"]
@@ -84,12 +165,12 @@ namespace AutoCareTracker.API.Controllers
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-            //data yang disisipkan ke dalam token (Payload)
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Role, user.Role), //sangat penting untuk fitur hak akses [Authorize(Roles="admin)]
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim("role", user.Role), // Claim tambahan agar mudah dibaca di frontend/middleware
                 new Claim("UserId", user.Id.ToString())
             };
 
@@ -97,18 +178,25 @@ namespace AutoCareTracker.API.Controllers
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(3), //token akan hangus otomatis dalam 3 jam
+                expires: DateTime.UtcNow.AddHours(3),
                 signingCredentials: credentials
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-
-        // 3. CLASS UNTUK MENANGKAP INPUT DARI NEXT.JS
         public class LoginRequest
         {
             public string Email { get; set; } = string.Empty;
             public string Password { get; set; } = string.Empty;
+        }
+
+        public class CreateUserRequest
+        {
+            public string Fullname { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
+            public string Password { get; set; } = string.Empty;
+            public string? PhoneNumber { get; set; }
+            public string? Role { get; set; }
         }
     }
 }

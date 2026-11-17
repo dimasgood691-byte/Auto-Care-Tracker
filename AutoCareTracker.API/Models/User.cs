@@ -16,6 +16,7 @@ namespace AutoCareTracker.API.Models
         public string Email { get; set; } = string.Empty;
 
         [Required]
+        [JsonIgnore] //Sembunyikan PasswordHash dari seluruh output JSON API
         public string PasswordHash { get; set; } = string.Empty;
 
         [MaxLength(20)]
