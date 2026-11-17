@@ -14,7 +14,7 @@ Sistem informasi manajemen bengkel kendaraan terintegrasi: web admin, aplikasi m
 
 ## [VERSI TECH STACK YANG DIGUNAKAN]
    - **.NET** : 10.0.401 [Backend]
-   - **NEXT.JS** : 11.13.0 [FrontendWeb]
+   - **NEXT.JS** : 16.4.3 [FrontendWeb]
    - **Flutter** : 3.47.7 [MobileApp]
 
 ## [PROGRES PENGERJAAN]
@@ -175,6 +175,30 @@ Selain membuat halaman login, konfigurasi keamanan di sisi *backend* (.NET 10) j
    - Mendaftarkan layanan Autentikasi (`AddAuthentication`) dengan pengaturan validasi JWT.
    - Menambahkan `app.UseAuthentication()` dan `app.UseAuthorization()` ke dalam pipeline request untuk memvalidasi token setiap kali ada request masuk.
 4. **Generasi Token (UsersController.cs):** Memisahkan endpoint *Register* dengan endpoint khusus *Login* (`[HttpPost("login")]`). Saat kredensial valid, backend men-generate *Token JWT* (berisi *payload* aman seperti UserID dan Role) yang akan kedaluwarsa secara otomatis. Token ini dikirimkan kembali ke klien untuk digunakan sebagai otorisasi pada aktivitas selanjutnya.
+
+### 5. Arsitektur HTTP-Only Cookie, Server Actions & Middleware (Next.js)
+Untuk meningkatkan keamanan sesi autentikasi di sisi *frontend* web (Next.js) dan mencegah serangan XSS (*Cross-Site Scripting*), penyimpanan token JWT kini dipindahkan dari `localStorage` ke **HTTP-Only Cookie**:
+1. **Server Actions (`app/actions/auth.tsx`):**
+   - `loginAdmin`: Menangani proses *login* dari sisi *server* Next.js ke *endpoint* `/api/users/login` (.NET), memvalidasi bahwa *role* pengguna termasuk staf operasional bengkel (`SuperAdmin`, `Kasir`, atau `Mekanik`), lalu menanamkan token JWT ke dalam *cookie* `admin_token` dan `user_role` dengan atribut `httpOnly: true`, `sameSite: "lax"`, dan masa aktif 3 jam.
+   - `logoutAdmin`: Menghapus *cookie* `admin_token` dan `user_role` secara aman dari sisi *server* lalu mengarahkan pengguna kembali ke `/login`.
+2. **Route Protection Middleware (`middleware.ts`):**
+   - Memproteksi seluruh rute `/dashboard/:path*` dengan memvalidasi keberadaan token, mengekstrak klaim `role` langsung dari *payload* JWT, serta memeriksa masa berlaku token (`exp`).
+   - Menerapkan pembatasan akses sub-rute berbasis *role* (misalnya halaman `/dashboard/users` hanya dapat diakses oleh `SuperAdmin`).
+   - Mencegah staf yang sudah terautentikasi kembali ke halaman `/login` sebelum melakukan *logout*.
+
+### 6. Role-Based Authorization Policy, Password Hashing & Proteksi Endpoint (.NET 10)
+Keamanan *backend* REST API ditingkatkan melalui penerapan hierarki hak akses (*Role-Based Authorization Policy*) dan enkripsi kata sandi:
+1. **Konfigurasi Role Hierarchy Policy (`Program.cs`):**
+   - `SuperAdminOnly`: Akses penuh khusus `SuperAdmin` (manajemen akun staf/pengguna).
+   - `KasirAccess`: Dapat diakses oleh `SuperAdmin` dan `Kasir` (penerimaan kendaraan, pembuatan *Work Order*, pembuatan *Invoice*, dan pembayaran kasir).
+   - `MekanikAccess`: Dapat diakses oleh `SuperAdmin` dan `Mekanik` (pembaruan status pengerjaan servis, input jasa, pemakaian suku cadang, foto progres, serta pengelolaan stok *sparepart*).
+   - `StaffOnly`: Dapat diakses oleh seluruh staf operasional web (`SuperAdmin`, `Kasir`, `Mekanik`).
+2. **Password Hashing & Proteksi Data Sensitif (`UsersController.cs` & `User.cs`):**
+   - Menggunakan `PasswordHasher<User>` (`Microsoft.AspNetCore.Identity`) untuk melakukan *hashing* kata sandi saat pembuatan akun baru (`POST /api/users` dan `POST /api/users/register`), dilengkapi mekanisme *auto-migration* bagi akun lama yang masih menggunakan *plain-text*.
+   - Menambahkan atribut `[JsonIgnore]` pada properti `PasswordHash` di `User.cs` agar *hash* kata sandi tidak pernah terekspos pada respons JSON API.
+   - Menambahkan *endpoint* publik `POST /api/users/register` (`[AllowAnonymous]`) khusus bagi registrasi pelanggan di aplikasi *mobile* Flutter, serta validasi pencegahan duplikasi email.
+3. **Integrasi JWT Bearer pada Swagger UI (`Program.cs`):**
+   - Menambahkan konfigurasi `AddSecurityDefinition("Bearer")` dan `AddSecurityRequirement` pada Swagger UI untuk memudahkan pengujian *endpoint* yang diproteksi `[Authorize]`.
 
 ## Langkah Instalasi
 #### [1] Clone Repository
