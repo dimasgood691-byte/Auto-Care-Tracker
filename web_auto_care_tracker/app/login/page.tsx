@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { loginAdmin } from "@/app/actions/auth";
 
 export default function LoginPage() {
-    const router = useRouter();
-
     // State Management
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [rememberEmail, setRememberEmail] = useState(false);
 
     // UI & UX States
     const [loading, setLoading] = useState(false);
@@ -71,35 +68,20 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setSuccess(false);
 
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email.trim(), password }),
-            });
+            const result = await loginAdmin(email.trim(), password);
 
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-                throw new Error(data.message || "Terjadi kesalahan saat menghubungi server.");
+            if (result?.error) {
+                triggerError(result.error);
+                return;
             }
 
-            if (rememberEmail) {
-                localStorage.setItem("autocare_remembered_email", email.trim());
-            } else {
-                localStorage.removeItem("autocare_remembered_email");
-            }
-
-            localStorage.setItem("admin_session", JSON.stringify(data));
             setSuccess(true);
-            router.push("/dashboard");
-        } catch (err: any) {
-            if (err.message === "Failed to fetch" || err.name === "TypeError") {
-                triggerError("Gagal terhubung ke server. Pastikan server API (.NET) sedang berjalan.");
-            } else {
-                triggerError(err.message || "Gagal masuk. Silakan periksa kembali kredensial Anda.");
-            }
+        } catch {
+            triggerError("Terjadi kesalahan saat menghubungi server. Silakan coba lagi.");
+        } finally {
             setLoading(false);
         }
     };
@@ -283,9 +265,8 @@ export default function LoginPage() {
                     {/* Wrapper Glow & Interactive Cursor Glare Card (Tanpa mengubah/memiringkan kartu & teks) */}
                     <div
                         onMouseMove={handleCardMouseMove}
-                        className={`relative group rounded-3xl p-[1.5px] bg-gradient-to-br from-blue-500/30 via-slate-200/80 to-cyan-500/30 hover:from-blue-600/60 hover:via-cyan-400/50 hover:to-indigo-600/60 transition-all duration-500 shadow-[0_20px_60px_-15px_rgba(37,99,235,0.16)] hover:shadow-[0_25px_70px_-12px_rgba(37,99,235,0.26)] ${
-                            shakeError ? "animate-shake" : ""
-                        }`}
+                        className={`relative group rounded-3xl p-[1.5px] bg-gradient-to-br from-blue-500/30 via-slate-200/80 to-cyan-500/30 hover:from-blue-600/60 hover:via-cyan-400/50 hover:to-indigo-600/60 transition-all duration-500 shadow-[0_20px_60px_-15px_rgba(37,99,235,0.16)] hover:shadow-[0_25px_70px_-12px_rgba(37,99,235,0.26)] ${shakeError ? "animate-shake" : ""
+                            }`}
                     >
                         {/* Kartu Form Login Glassmorphism */}
                         <div className="relative bg-white/92 backdrop-blur-2xl rounded-[22.5px] p-8 sm:p-10 overflow-hidden">
@@ -385,17 +366,15 @@ export default function LoginPage() {
                                     <div className="flex items-center justify-between mb-2">
                                         <label
                                             htmlFor="email"
-                                            className={`block text-sm font-semibold transition-colors ${
-                                                focusedField === "email" ? "text-blue-600" : "text-slate-700"
-                                            }`}
+                                            className={`block text-sm font-semibold transition-colors ${focusedField === "email" ? "text-blue-600" : "text-slate-700"
+                                                }`}
                                         >
                                             Alamat Email
                                         </label>
                                         {email.length > 0 && (
                                             <span
-                                                className={`text-[11px] font-medium transition-all ${
-                                                    isEmailValid ? "text-emerald-600" : "text-slate-400"
-                                                }`}
+                                                className={`text-[11px] font-medium transition-all ${isEmailValid ? "text-emerald-600" : "text-slate-400"
+                                                    }`}
                                             >
                                                 {isEmailValid ? "✓ Email valid" : "Format email..."}
                                             </span>
@@ -403,11 +382,10 @@ export default function LoginPage() {
                                     </div>
                                     <div className="relative">
                                         <div
-                                            className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-all duration-200 ${
-                                                focusedField === "email"
+                                            className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-all duration-200 ${focusedField === "email"
                                                     ? "text-blue-600 scale-110"
                                                     : "text-slate-400"
-                                            }`}
+                                                }`}
                                         >
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path
@@ -446,9 +424,8 @@ export default function LoginPage() {
                                     <div className="flex items-center justify-between mb-2">
                                         <label
                                             htmlFor="password"
-                                            className={`block text-sm font-semibold transition-colors ${
-                                                focusedField === "password" ? "text-blue-600" : "text-slate-700"
-                                            }`}
+                                            className={`block text-sm font-semibold transition-colors ${focusedField === "password" ? "text-blue-600" : "text-slate-700"
+                                                }`}
                                         >
                                             Kata Sandi
                                         </label>
@@ -463,11 +440,10 @@ export default function LoginPage() {
                                     </div>
                                     <div className="relative">
                                         <div
-                                            className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-all duration-200 ${
-                                                focusedField === "password"
+                                            className={`absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none transition-all duration-200 ${focusedField === "password"
                                                     ? "text-blue-600 scale-110"
                                                     : "text-slate-400"
-                                            }`}
+                                                }`}
                                         >
                                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path
@@ -571,5 +547,4 @@ export default function LoginPage() {
         </div>
     );
 }
-
 
